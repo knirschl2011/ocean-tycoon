@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abyssal Beginnings - Ocean Tycoon</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #001122 0%, #003366 50%, #004477 100%);
+            overflow: hidden;
+            color: white;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .ui-panel {
+            position: absolute;
+            background: rgba(0, 20, 40, 0.9);
+            border: 2px solid rgba(0, 150, 255, 0.5);
+            border-radius: 10px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            pointer-events: auto;
+        }
+        
+        #resourcePanel {
+            top: 20px;
+            left: 20px;
+            min-width: 250px;
+        }
+        
+        #missionPanel {
+            top: 20px;
+            right: 20px;
+            max-width: 300px;
+        }
+        
+        #depthMeter {
+            bottom: 20px;
+            left: 20px;
+            text-align: center;
+            min-width: 120px;
+        }
+        
+        #controls {
+            bottom: 20px;
+            right: 20px;
+            max-width: 200px;
+        }
+        
+        .resource-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 8px 0;
+            padding: 5px;
+            background: rgba(0, 100, 200, 0.2);
+            border-radius: 5px;
+        }
+        
+        .resource-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            border-radius: 50%;
+        }
+        
+        .oxygen { background: linear-gradient(45deg, #00ffff, #0080ff); }
+        .power { background: linear-gradient(45deg, #ffff00, #ff8000); }
+        .minerals { background: linear-gradient(45deg, #8b4513, #daa520); }
+        .credits { background: linear-gradient(45deg, #00ff00, #008000); }
+        
+        .resource-bar {
+            width: 100px;
+            height: 8px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-left: 10px;
+        }
+        
+        .resource-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .depth-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+        
+        .mission-text {
+            font-size: 14px;
+            line-height: 1.4;
+            color: #cce7ff;
+        }
+        
+        .mission-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #00ff88;
+            margin-bottom: 10px;
+        }
+        
+        .control-hint {
+            font-size: 12px;
+            margin: 5px 0;
+            color: #aaccee;
+        }
+        
+        #collectPrompt {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 255, 100, 0.9);
+            color: #001a00;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 18px;
+            display: none;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+        }
+        
+        .notification {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 215, 0, 0.95);
+            color: #001100;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-weight: bold;
+            display: none;
+            animation: slideDown 0.5s ease;
+        }
+        
+        @keyframes slideDown {
+            from { top: 20px; opacity: 0; }
+            to { top: 50px; opacity: 1; }
+        }
+
+        #touchControls {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .touch-button {
+            background: rgba(0, 150, 255, 0.8);
+            border: 2px solid rgba(0, 200, 255, 0.9);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .touch-button:active {
+            background: rgba(0, 200, 255, 1);
+            transform: scale(0.95);
+        }
+        
+        .touch-button.rect {
+            border-radius: 10px;
+            width: 80px;
+            height: 40px;
+        }
+
+        .upgrade-button {
+            background: rgba(0, 180, 255, 0.7);
+            border: 1px solid rgba(0, 220, 255, 0.9);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+        }
+
+        .upgrade-button:hover {
+            background: rgba(0, 200, 255, 0.9);
+        }
+
+        .upgrade-button:disabled {
+            background: rgba(100, 100, 100, 0.5);
+            cursor: not-allowed;
+            border-color: rgba(150, 150, 150, 0.7);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="ui">
+            <div id="resourcePanel" class="ui-panel">
+                <h3 style="color: #00ccff; margin-bottom: 10px;">Resources</h3>
+                <div class="resource-item">
+                    <div style="display: flex; align-items: center;">
+                        <div class="resource-icon oxygen"></div>
+                        Oxygen
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <span id="oxygenValue">100</span>%
+                        <div class="resource-bar">
+                            <div class="resource-fill oxygen" id="oxygenBar" style="width: 100%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="resource-item">
+                    <div style="display: flex; align-items: center;">
+                        <div class="resource-icon power"></div>
+                        Power
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <span id="powerValue">85</span>%
+                        <div class="resource-bar">
+                            <div class="resource-fill power" id="powerBar" style="width: 85%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="resource-item">
+                    <div style="display: flex; align-items: center;">
+                        <div class="resource-icon minerals"></div>
+                        Minerals
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <span id="mineralsValue">0</span>
+                    </div>
+                </div>
+                <div class="resource-item">
+                    <div style="display: flex; align-items: center;">
+                        <div class="resource-icon credits"></div>
+                        Credits
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <span id="creditsValue">500</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="missionPanel" class="ui-panel">
+                <div class="mission-title">Mission: Deep Survey</div>
+                <div class="mission-text">
+                    Welcome to the abyss, Pioneer! Your first task is to establish a foothold in these mysterious depths.
+                    <br><br>
+                    • Explore the seafloor<br>
+                    • Collect 10 mineral samples<br>
+                    • Return to surface before oxygen runs out<br>
+                    • Watch for marine life!
+                    <br><br>
+                    <strong>💡 Tip:</strong> Surface above -10m to regenerate oxygen!
+                </div>
+            </div>
+            
+            <div id="depthMeter" class="ui-panel">
+                <div>Depth</div>
+                <div class="depth-display" id="depthValue">0m</div>
+                <div style="font-size: 12px; margin-top: 5px;">
+                    <span id="pressureZone" style="color: #00ff88;">Surface</span>
+                </div>
+                <div style="font-size: 10px; color: #aaccee; margin-top: 3px;">
+                    Pressure: <span id="pressureLevel">1 ATM</span>
+                </div>
+            </div>
+            
+            <div id="controls" class="ui-panel">
+                <div class="control-hint">WASD or ↑↓←→: Move</div>
+                <div class="control-hint">Space: Ascend</div>
+                <div class="control-hint">Shift: Descend</div>
+                <div class="control-hint">E: Collect (when near)</div>
+                <div class="control-hint" id="inputTypeHint">Mouse: Look around</div>
+            </div>
+            
+            <div id="touchControls" class="ui-panel">
+                <div class="touch-button" data-key="w">↑</div>
+                <div class="touch-button" data-key="a">←</div>
+                <div class="touch-button" data-key="s">↓</div>
+                <div class="touch-button" data-key="d">→</div>
+                <div class="touch-button" data-key=" ">🔼</div>
+                <div class="touch-button" data-key="Shift">🔽</div>
+                <div class="touch-button rect" data-key="e">Collect</div>
+            </div>
+            
+            <div id="collectPrompt">Press E to Collect</div>
+            <div id="notification" class="notification"></div>
+
+            <div id="upgradePanel" class="ui-panel" style="bottom: 20px; left: 50%; transform: translateX(-50%);">
+                <h3 style="color: #00ccff; margin-bottom: 10px;">Upgrades</h3>
+                <button id="upgradeHullButton" class="upgrade-button">
+                    Upgrade Hull (Cost: 1000 Credits)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="src/main.js"></script>
+</body>
+</html>
